@@ -82,14 +82,14 @@
 <meta name="description" content="此应用目的为检测用户与设备的距离并实现提醒。核心技术使用OpenCV。核心算法为检测瞳孔的距离以推算实现用户与设备的距离。">
 <meta name="keywords" content="OpenCV,Android">
 <meta property="og:type" content="article">
-<meta property="og:title" content="基于OpenCV实现人脸瞳孔侦测的安卓应用————Seyes（1）">
+<meta property="og:title" content="Seyes——基于OpenCV实现人脸瞳孔侦测的安卓应用（1）">
 <meta property="og:url" content="https://leerily.github.io/2019/06/02/Seyes/基于OpenCV实现人脸瞳孔侦测的安卓应用/index.html">
 <meta property="og:site_name" content="leerily-Leroy">
 <meta property="og:description" content="此应用目的为检测用户与设备的距离并实现提醒。核心技术使用OpenCV。核心算法为检测瞳孔的距离以推算实现用户与设备的距离。">
 <meta property="og:locale" content="zh-cn">
-<meta property="og:updated_time" content="2019-06-03T11:05:08.915Z">
+<meta property="og:updated_time" content="2019-06-03T18:35:15.615Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="基于OpenCV实现人脸瞳孔侦测的安卓应用————Seyes（1）">
+<meta name="twitter:title" content="Seyes——基于OpenCV实现人脸瞳孔侦测的安卓应用（1）">
 <meta name="twitter:description" content="此应用目的为检测用户与设备的距离并实现提醒。核心技术使用OpenCV。核心算法为检测瞳孔的距离以推算实现用户与设备的距离。">
 
 
@@ -126,7 +126,7 @@
 
 
 
-  <title>基于OpenCV实现人脸瞳孔侦测的安卓应用————Seyes（1） | leerily-Leroy</title>
+  <title>Seyes——基于OpenCV实现人脸瞳孔侦测的安卓应用（1） | leerily-Leroy</title>
   
 
 
@@ -312,7 +312,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">基于OpenCV实现人脸瞳孔侦测的安卓应用————Seyes（1）</h1>
+          <h1 class="post-title" itemprop="name headline">Seyes——基于OpenCV实现人脸瞳孔侦测的安卓应用（1）</h1>
         
 
         <div class="post-meta">
@@ -385,7 +385,35 @@
 
       
         <p>此应用目的为检测用户与设备的距离并实现提醒。核心技术使用OpenCV。核心算法为检测瞳孔的距离以推算实现用户与设备的距离。<a id="more"></a></p>
-<h1 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h1><h2 id="导入-OpenCV-for-Android-到-AndroidStudio"><a href="#导入-OpenCV-for-Android-到-AndroidStudio" class="headerlink" title="导入 OpenCV for Android 到 AndroidStudio"></a><a href="../../../01/Seyes/在AndroidStudio中配置OpenCV">导入 OpenCV for Android 到 AndroidStudio</a></h2>
+<p>本章主要讨论了瞳孔侦测的核心算法以及在OpenCV for Android的实现方法。</p>
+<p><a href="../../../01/Seyes/在AndroidStudio中配置OpenCV">导入 OpenCV for Android 到 AndroidStudio</a></p>
+<h1 id="利用已有的OpenCV级联分类器识别出人脸部分"><a href="#利用已有的OpenCV级联分类器识别出人脸部分" class="headerlink" title="利用已有的OpenCV级联分类器识别出人脸部分"></a>利用已有的OpenCV级联分类器识别出人脸部分</h1><p>这里主要使用OpenCV的级联分类器CascadeClassifier类的实例，该实例具有方法<code>detectMultiScale(...)</code>,通过该方法可以将输入的图像的特征部分保存到一个MatOfRect类当中。后续我们对瞳孔的处理都是针对这个MatOfRect实例。代码示例如下：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//@param, inputMat是你输入的Mat，matOfRect是检测后的输出，scaleFactor，minNeighbors, flags参数与具体的实现算法有关，而后面是检测的最小与最大size。</span></span><br><span class="line">faceCascadeClassifier.detectMultiScale(inputMat, matOfRect, scaleFactor, minNeighbors， flags，minSize()，maxSize());</span><br></pre></td></tr></table></figure></p>
+<p>通过这个方法我们最终可以得到一个matOfRect，这是类MatOfRect实例。实际上MatOfRect相当于一个Rect数组，我们可以使用其提供的<code>toArray()</code>方法得到一系列Rect，每一个Rect矩阵对应了一个识别出来的特征图形在原图的位置。</p>
+<p>在这里我们的cascadeClassifier使用了OpenCV提供的分类器<code>lbpcascade_frontalface.xml</code>，这是对人脸进行分类的一个xml文件。则我们得到的MatOfRect存储了检测出的所有face。以下代码则可以得到包含所有face的一个Rect数组。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Rect[] facesArray = matOfRect.toArray();</span><br></pre></td></tr></table></figure></p>
+<h1 id="根据人脸进行眼部的图片的范围扣取"><a href="#根据人脸进行眼部的图片的范围扣取" class="headerlink" title="根据人脸进行眼部的图片的范围扣取"></a>根据人脸进行眼部的图片的范围扣取</h1><p>在上述结果基础上，我们在脸部进行一个眼部扣取，通过对人脸的比例划分出大致包含了眼睛的部分并保存到一个Rect当中，以提高后续检测眼睛的精确率。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>; i&lt;facesArray.length; i++)&#123;</span><br><span class="line">    Rect tempFace = facesArray[i];</span><br><span class="line">    Rect eyearea_right = <span class="keyword">new</span> Rect(tempFace.x + tempFace.width / <span class="number">16</span>,</span><br><span class="line">        (<span class="keyword">int</span>) (tempFace.y + (tempFace.height / <span class="number">4.5</span>)),</span><br><span class="line">        (tempFace.width - <span class="number">2</span> * tempFace.width / <span class="number">16</span>) / <span class="number">2</span>, (<span class="keyword">int</span>) (tempFace.height / <span class="number">3.0</span>));</span><br><span class="line">    Rect eyearea_left = <span class="keyword">new</span> Rect(tempFace.x + tempFace.width / <span class="number">16</span> + (tempFace.width - <span class="number">2</span> * tempFace.width / <span class="number">16</span>) / <span class="number">2</span>,</span><br><span class="line">        (<span class="keyword">int</span>) (tempFace.y + (tempFace.height / <span class="number">4.5</span>)),</span><br><span class="line">        (tempFace.width - <span class="number">2</span> * tempFace.width / <span class="number">16</span>) / <span class="number">2</span>, (<span class="keyword">int</span>) (tempFace.height / <span class="number">3.0</span>));</span><br><span class="line">    <span class="comment">//后续操作...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h1 id="通过级联分类器识别人眼"><a href="#通过级联分类器识别人眼" class="headerlink" title="通过级联分类器识别人眼"></a>通过级联分类器识别人眼</h1><p>首先我们需要根据上一步大致划分的人眼区域，在原图中扣取出来一个Mat。这个Mat即是上一步扣取的图像，它将作为我们的人眼识别的原图。Mat类的submat函数可实现此需求：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Mat left_eyeMat = inputMat.submat(eyearea_left);</span><br></pre></td></tr></table></figure></p>
+<p>然后通过现有的人眼级联分类器识别出眼部,并保存到MatOfRect的实例eyeROI当中：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">eyeCascadeClassifier.detectMultiScale(left_eyeMat, left_eyeROI, scaleFactor, minNeighbors， flags，minSize()，maxSize());</span><br></pre></td></tr></table></figure></p>
+<h1 id="对检测出的人眼部分进行瞳孔检测"><a href="#对检测出的人眼部分进行瞳孔检测" class="headerlink" title="对检测出的人眼部分进行瞳孔检测"></a>对检测出的人眼部分进行瞳孔检测</h1><p>我们对瞳孔检测处理的算法是使用灰度图求最大灰度值。及默认人眼瞳孔相对于整个眼部的灰度值最大，通俗来讲就是瞳孔最黑，最黑的这个点就是我们的目标。</p>
+<ol>
+<li><p>将人眼部分转换为灰度图。通过OpenCV的Imgproc类的cvtColor()函数完成。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//把检测出的结果用矩阵表示</span></span><br><span class="line">Rect[] left_eyeROIArray = left_eyeROI.toArray();</span><br><span class="line"><span class="comment">//检查bad data</span></span><br><span class="line"><span class="keyword">if</span>(left_eyeROIArray==<span class="keyword">null</span>)  <span class="keyword">return</span>;</span><br><span class="line"><span class="comment">//这里的矩阵是相对于上一步划分出的人眼范围图</span></span><br><span class="line"><span class="comment">//同样需要根据人眼范围Mat来切割出人眼位置</span></span><br><span class="line">Mat srcMat = left_eyeMat.submat(left_eyeROIArray[<span class="number">0</span>]);</span><br><span class="line">Mat dstMat;</span><br><span class="line">Imgproc.cvtColor(srcMat,dstMat,Imgproc.COLOR_BGRA2GRAY);</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>计算最大灰度值坐标，这里使用Core类的minMaxLoc(Mat grayMat)函数。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Core.minmaxLocResult minMaxLocResult = Core.minMaxLoc(dstMat);</span><br><span class="line">Point leftPupil = minMaxLocResult.MaxLoc;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>Note：</p>
+<p>这里需要理解参照物的区别。我们得到的leftPupil这个坐标是参照dstMat而言，等价于是参照我们检测出的眼部，也就是left_eyeROI对应的Mat。而后面我们计算瞳孔距离需要一步步把参照物还原到最开始的输入图像inputMat。</p>
+</blockquote>
+<h1 id="计算瞳距"><a href="#计算瞳距" class="headerlink" title="计算瞳距"></a>计算瞳距</h1><p>假定现在已经求出一张脸的两个瞳孔坐标pupil[0],pupil[1]。则我们需要以下步骤将该坐标变为相对于最开始输入的图像的坐标。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//将相对于检测眼部参照物的坐标变换到划分眼部参照物坐标。</span></span><br><span class="line">pupils[<span class="number">0</span>].x += left_eyeROIArray[<span class="number">0</span>].x;</span><br><span class="line">pupils[<span class="number">0</span>].y += left_eyeROIArray[<span class="number">0</span>].y;</span><br><span class="line"><span class="comment">//将相对于划分眼部参照物坐标变换到脸部参照物坐标。</span></span><br><span class="line">pupils[<span class="number">0</span>].x += eyearea_left.x;</span><br><span class="line">pupils[<span class="number">0</span>].y += eyearea_left.y;</span><br><span class="line"><span class="comment">//将相对于眼部参照物坐标变换到原图坐标</span></span><br><span class="line">pupils[<span class="number">0</span>].x += facesArray[i].x;</span><br><span class="line">pupils[<span class="number">0</span>].y += facesArray[i].y;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>则最终我们得到人眼瞳孔坐标，也就可以计算瞳孔距离。</p>
+<blockquote>
+<p>Note:<br> 这里的没有必要增加计算量严格按照勾股定理求距离，只需要平方和即可。</p>
+</blockquote>
+<p>而后，我们将讨论如何进行安卓应用模块设计。</p>
+
       
     </div>
     
@@ -405,7 +433,7 @@
   </li>
   <li class="post-copyright-link">
     <strong>Post link:</strong>
-    <a href="https://leerily.github.io/2019/06/02/Seyes/基于OpenCV实现人脸瞳孔侦测的安卓应用/" title="基于OpenCV实现人脸瞳孔侦测的安卓应用————Seyes（1）">https://leerily.github.io/2019/06/02/Seyes/基于OpenCV实现人脸瞳孔侦测的安卓应用/</a>
+    <a href="https://leerily.github.io/2019/06/02/Seyes/基于OpenCV实现人脸瞳孔侦测的安卓应用/" title="Seyes——基于OpenCV实现人脸瞳孔侦测的安卓应用（1）">https://leerily.github.io/2019/06/02/Seyes/基于OpenCV实现人脸瞳孔侦测的安卓应用/</a>
   </li>
   <li class="post-copyright-license">
     <strong>Copyright Notice: </strong>
@@ -604,7 +632,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#准备"><span class="nav-number">1.</span> <span class="nav-text">准备</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#导入-OpenCV-for-Android-到-AndroidStudio"><span class="nav-number">1.1.</span> <span class="nav-text">导入 OpenCV for Android 到 AndroidStudio</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#利用已有的OpenCV级联分类器识别出人脸部分"><span class="nav-number">1.</span> <span class="nav-text">利用已有的OpenCV级联分类器识别出人脸部分</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#根据人脸进行眼部的图片的范围扣取"><span class="nav-number">2.</span> <span class="nav-text">根据人脸进行眼部的图片的范围扣取</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#通过级联分类器识别人眼"><span class="nav-number">3.</span> <span class="nav-text">通过级联分类器识别人眼</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#对检测出的人眼部分进行瞳孔检测"><span class="nav-number">4.</span> <span class="nav-text">对检测出的人眼部分进行瞳孔检测</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#计算瞳距"><span class="nav-number">5.</span> <span class="nav-text">计算瞳距</span></a></li></ol></div>
             
 
           </div>
